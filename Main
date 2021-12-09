@@ -24,13 +24,16 @@ int xValue = 0 ;
 int yValue = 0 ; 
 int xPin = A2;
 int yPin = A1;
+const int buzzer = A3;
 
 int xRest = -510;
 int yRest = -520;
 
 float xMouse = 100;
 float yMouse = 100;
-float MouseSensitivity = .005;
+float xMousePast = 100;
+float yMousePast = 100;
+float MouseSensitivity = .0007;
 
 static uint8_t conv2d(const char* p) {
   uint8_t v = 0;
@@ -59,6 +62,7 @@ void setup() {
 
   pinMode(xPin, INPUT); 
   pinMode(yPin, INPUT);
+  pinMode(buzzer, OUTPUT);
 }
 
 void homeScreen(){
@@ -66,12 +70,12 @@ void homeScreen(){
   tft.fillScreen(RA8875_BLACK);
   tft.fillRoundRect(10,10,60,60,5,RA8875_BLUE); tft.fillCircle(40,40,25,RA8875_BLACK); tft.fillCircle(50,30,20,RA8875_BLUE);// sleep app
   tft.fillRoundRect(100,10,60,60,5,RA8875_WHITE); tft.drawCircle(130, 40, 25, RA8875_BLACK); tft.drawLine(130, 40, 143, 25, RA8875_BLACK); tft.drawLine(130, 40, 130, 25, RA8875_BLACK);// clock/screensaver
-  tft.fillRoundRect(190,10,60,60,5,RA8875_BLUE); tft.fillRoundRect(193,23,55,30,5,RA8875_WHITE); tft.drawRoundRect(195,25,51,25,5,RA8875_BLACK); // ticket tracker
-  tft.changeMode(TEXT);
-  tft.setTextColor(RA8875_BLACK);
-  tft.setFontScale(0);
-  tft.setCursor(196, 30);
-  tft.println("TICKET");
+  //tft.fillRoundRect(190,10,60,60,5,RA8875_BLUE); tft.fillRoundRect(193,23,55,30,5,RA8875_WHITE); tft.drawRoundRect(195,25,51,25,5,RA8875_BLACK); // ticket tracker
+  //tft.changeMode(TEXT);
+  //tft.setTextColor(RA8875_BLACK);
+  //tft.setFontScale(0);
+  //tft.setCursor(196, 30);
+  //tft.println("TICKET");
   tft.changeMode(GRAPHIC);
   tft.fillRoundRect(410, 205, 60, 60, 5, RA8875_WHITE); tft.fillRect(411, 230, 58, 10, RA8875_BLACK); tft.fillRect(435, 206, 10, 58, RA8875_BLACK); tft.fillCircle(440, 235, 21, RA8875_BLACK); // settings
   for(x = 1 ; x < 9 ; x++){
@@ -160,11 +164,9 @@ void printTime(int size, int x, int y){
   tft.print(__DATE__);
 }
 
-void mouse(float xPos, float yPos){
-  tft.fillCircle(xPos, yPos, 5, RA8875_WHITE);
-}
-
 void loop() {
+  int i = abs(xValue + yValue);
+  tone(buzzer, i);
   //Serial.println(String(realTime[0]) + String(":") + String(realTime[1]) + String(":") + String(realTime[2]) + String(":") + String(realTime[3]));
   if(millis() - (realTime[2] * 1000) >= 1000){
     realTime[2]++;
@@ -189,22 +191,23 @@ void loop() {
   }
   xValue = -1 * analogRead(xPin) - xRest;  
   yValue = -1 * analogRead(yPin) - yRest;  
+  xMousePast = xMouse;
+  yMousePast = yMouse;
   xMouse += xValue * MouseSensitivity;
   yMouse += yValue * MouseSensitivity; 
   xMouse = constrain(xMouse, 0, 500);
   yMouse = constrain(yMouse, 0, 300);
-  Serial.print(xValue);
-  Serial.print(",");
-  Serial.print(yValue);
-  Serial.print("\n");
-
-  mouse(xMouse, yMouse);
+  tft.fillCircle(xMousePast, yMousePast, 5, RA8875_BLACK);
+  tft.fillCircle(xMouse, yMouse, 5, RA8875_WHITE);
   
   tft.changeMode(GRAPHIC);
   if(tft.touchDetect()){
     tft.touchReadPixel(&tx, &ty);
     tx = tx;ty = ty;
     Serial.println(app);
+    tft.fillCircle(xMouse, yMouse, 5, RA8875_BLACK);
+    xMouse = tx;
+    yMouse = ty;
     if(app == "none"){
       if(tx >= 10 && tx <= 70 && ty >= 10 && ty <= 70){
         openApp(10, 10, RA8875_BLUE);
@@ -214,16 +217,15 @@ void loop() {
         openApp(100, 10, RA8875_WHITE);
         app = "time";
       }
-      else if(tx >= 190 && tx <= 250 && ty >= 10 && ty <= 70){
-        openApp(190, 10, RA8875_BLUE);
-        app = "ticket";
-      }
       else if(tx >= 390 && tx <= 470 && ty >= 203 && ty <= 263){
         openApp(390, 203, RA8875_WHITE);
         app = "settings";
-        
       }
+      //else if(tx >= 190 && tx <= 250 && ty >= 10 && ty <= 70){
+      //  openApp(190, 10, RA8875_BLUE);
+      //  app = "ticket";
     }
+    
     else{
       if(tx >= 10 && tx <= 40 && ty >= 231 && ty <= 261){
         Serial.println("close app");
