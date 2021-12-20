@@ -1,6 +1,5 @@
 #include <SPI.h>
 #include <RA8875.h>
-#include <EEPROM.h> 
 
 #define RA8875_INT 4 
 #define RA8875_CS 10 
@@ -22,12 +21,14 @@ int realTime[] = {1, 2, 3, 4};
 
 int xValue = 0 ;
 int yValue = 0 ; 
-int xPin = A2;
+int xPin = A0;
 int yPin = A1;
+int swPin = A2;
 const int buzzer = A3;
+int swValue = 0;
 
-int xRest = -510;
-int yRest = -520;
+int xRest = 510;
+int yRest = 520;
 
 float xMouse = 100;
 float yMouse = 100;
@@ -42,7 +43,7 @@ static uint8_t conv2d(const char* p) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(2000);
   Serial.println("startUp");
 
   tft.begin(RA8875_480x272);
@@ -62,7 +63,12 @@ void setup() {
 
   pinMode(xPin, INPUT); 
   pinMode(yPin, INPUT);
-  pinMode(buzzer, OUTPUT);
+  //pinMode(buzzer, OUTPUT);
+  pinMode(swPin, INPUT_PULLUP);
+
+  //zero the joystick
+  xRest = analogRead(xPin);
+  yRest = analogRead(yPin);
 }
 
 void homeScreen(){
@@ -189,8 +195,17 @@ void loop() {
         printTime(1, 10, 200);
     }
   }
-  xValue = -1 * analogRead(xPin) - xRest;  
-  yValue = -1 * analogRead(yPin) - yRest;  
+  xValue = analogRead(xPin) - xRest;  
+  yValue = analogRead(yPin) - yRest; 
+  swValue = not digitalRead(swPin);
+  if(swValue)
+  {
+    xValue = 0;
+    yValue = 0; 
+  }
+  //Serial.print(xValue);
+  //Serial.print(", ");
+  //Serial.println(yValue);
   xMousePast = xMouse;
   yMousePast = yMouse;
   xMouse += xValue * MouseSensitivity;
@@ -200,10 +215,22 @@ void loop() {
   tft.fillCircle(xMousePast, yMousePast, 5, RA8875_BLACK);
   tft.fillCircle(xMouse, yMouse, 5, RA8875_WHITE);
   
+  //Serial.print(analogRead(xPin));
+  //Serial.print(", ");
+  //Serial.print(analogRead(yPin));
+  //Serial.print(", ");
+  //Serial.println(digitalRead(swPin));
+  
   tft.changeMode(GRAPHIC);
-  if(tft.touchDetect()){
+  if(tft.touchDetect() || swValue)
+  {
     tft.touchReadPixel(&tx, &ty);
     tx = tx;ty = ty;
+    if(swValue)
+    {
+      tx = xMouse;
+      ty = yMouse;
+    }
     Serial.println(app);
     tft.fillCircle(xMouse, yMouse, 5, RA8875_BLACK);
     xMouse = tx;
